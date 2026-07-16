@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Science EGrade Portal — Grade 9 Badjao</title>
+<style>
+/* ==========================================================================
+   SCIENCE EGRADE PORTAL — Grade 9 Badjao
+   Cavite School of St. Mark
+   Single-file, offline, vanilla HTML/CSS/JS build.
+   ========================================================================== */
+
+/* --------------------------- Design Tokens ------------------------------ */
+:root{
+  --maroon: #7a1420;
+  --maroon-bright: #a82130;
+  --gold: #d9b34d;
+  --gold-soft: #f0d98c;
+  --navy: #050b1e;
+  --navy-deep: #030716;
+  --panel: rgba(12, 22, 48, 0.55);
+  --panel-border: rgba(217, 179, 77, 0.35);
+  --cyan-glow: #4fe0e8;
+  --white: #f4f2ec;
+  --dim: rgba(244,242,236,0.68);
+  --font-display: 'Segoe UI', 'Trebuchet MS', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Consolas', 'Courier New', monospace;
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --ease: cubic-bezier(.22,.9,.32,1);
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+
+*{ box-sizing: border-box; }
+html,body{
+  margin:0; padding:0; width:100%; min-height:100%;
+  background: var(--navy-deep);
+  color: var(--white);
+  font-family: var(--font-display);
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+h1,h2,h3,h4{ margin:0; font-weight:800; letter-spacing:0.02em; }
+p{ margin:0; }
+button{ font-family:inherit; cursor:pointer; }
+a{ color:inherit; text-decoration:none; }
+::selection{ background: var(--gold); color: var(--navy-deep); }
+
+/* Skip link for accessibility */
+.skip-link{
+  position:absolute; left:-999px; top:0; background:var(--gold); color:var(--navy-deep);
+  padding:10px 16px; z-index:999; border-radius:0 0 8px 0; font-weight:700;
+}
+.skip-link:focus{ left:0; }
+
+/* Focus visibility */
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
+  outline: 2px solid var(--cyan-glow);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* --------------------------- Background Layers --------------------------- */
+#bg-canvas{
+  position: fixed; inset: 0; width:100%; height:100%; z-index:0;
+  background:
+    radial-gradient(ellipse at 20% 15%, rgba(122,20,32,0.35), transparent 55%),
+    radial-gradient(ellipse at 82% 78%, rgba(79,224,232,0.10), transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(217,179,77,0.08), transparent 60%),
+    linear-gradient(180deg, #030716 0%, #050b1e 45%, #0a1230 100%);
+}
+
+.grid-overlay{
+  position: fixed; inset:0; z-index:1; pointer-events:none; opacity:0.16;
+  background-image:
+    linear-gradient(rgba(79,224,232,0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,224,232,0.35) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(ellipse at 50% 30%, black 0%, transparent 75%);
+}
+
+.equation-field{
+  position: fixed; inset:0; z-index:1; pointer-events:none; overflow:hidden;
+  font-family: var(--font-mono); color: rgba(217,179,77,0.10); font-size:1.1rem;
+}
+.equation-field span{
+  position:absolute; white-space:nowrap; animation: driftEq linear infinite;
+}
+@keyframes driftEq{
+  from{ transform: translateY(0) translateX(0); }
+  to{ transform: translateY(-40px) translateX(10px); }
+}
+
+#stars{ position: fixed; inset:0; z-index:1; pointer-events:none; }
+.star{
+  position:absolute; background: var(--white); border-radius:50%;
+  animation: twinkle ease-in-out infinite;
+  box-shadow: 0 0 6px rgba(244,242,236,0.8);
+}
+@keyframes twinkle{
+  0%,100%{ opacity:0.15; transform:scale(0.8); }
+  50%{ opacity:1; transform:scale(1.15); }
+}
+
+.wave{
+  position: fixed; left:0; right:0; bottom:0; height:38vh; z-index:1; pointer-events:none;
+  background: linear-gradient(180deg, transparent, rgba(79,224,232,0.06));
+  animation: wavePulse 7s ease-in-out infinite;
+}
+@keyframes wavePulse{
+  0%,100%{ opacity:0.5; } 50%{ opacity:1; }
+}
+
+/* Floating science emoji particles (ambient, behind content) */
+.float-layer{ position: fixed; inset:0; z-index:1; pointer-events:none; overflow:hidden; }
+.floater{
+  position:absolute; opacity:0.28; filter: drop-shadow(0 0 6px rgba(79,224,232,0.4));
+  animation: floatUp linear infinite;
+  font-size: 1.6rem;
+}
+@keyframes floatUp{
+  0%{ transform: translateY(10vh) translateX(0) rotate(0deg); opacity:0; }
+  10%{ opacity:0.28; }
+  90%{ opacity:0.28; }
+  100%{ transform: translateY(-115vh) translateX(30px) rotate(180deg); opacity:0; }
+}
+
+/* --------------------------- Loading Sequence --------------------------- */
+#loader{
+  position: fixed; inset:0; z-index: 999; background: radial-gradient(ellipse at center, #0a1230 0%, #030716 80%);
+  display:flex; align-items:center; justify-content:center; flex-direction:column;
+  transition: opacity 0.9s var(--ease), visibility 0.9s var(--ease);
+  padding: 20px;
+  text-align:center;
+}
+#loader.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+
+.orbit-rig{
+  position:relative; width: min(220px, 55vw); height: min(220px, 55vw); margin-bottom: 28px;
+}
+.crest{
+  position:absolute; inset:0; margin:auto; width:64%; height:64%;
+  border-radius:50%;
+  background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--maroon) 70%);
+  display:flex; align-items:center; justify-content:center;
+  font-size: 2rem;
+  box-shadow: 0 0 40px rgba(217,179,77,0.55), inset 0 0 20px rgba(0,0,0,0.35);
+  border: 2px solid var(--gold);
+  animation: crestPulse 2.4s ease-in-out infinite;
+}
+@keyframes crestPulse{
+  0%,100%{ box-shadow: 0 0 30px rgba(217,179,77,0.45), inset 0 0 20px rgba(0,0,0,0.35); }
+  50%{ box-shadow: 0 0 55px rgba(217,179,77,0.85), inset 0 0 20px rgba(0,0,0,0.35); }
+}
+.e-orbit{
+  position:absolute; inset:0; border:1.5px dashed rgba(79,224,232,0.5); border-radius:50%;
+  animation: spin linear infinite;
+}
+.e-orbit i{
+  position:absolute; top:-5px; left:50%; width:10px; height:10px; margin-left:-5px;
+  background: var(--cyan-glow); border-radius:50%; box-shadow:0 0 10px var(--cyan-glow), 0 0 20px var(--cyan-glow);
+}
+.e-orbit.o1{ animation-duration: 3.2s; }
+.e-orbit.o2{ width:130%; height:130%; left:-15%; top:-15%; animation-duration: 5s; animation-direction: reverse; border-color: rgba(217,179,77,0.4); }
+.e-orbit.o2 i{ background: var(--gold); box-shadow:0 0 10px var(--gold), 0 0 20px var(--gold); }
+.e-orbit.o3{ width:160%; height:160%; left:-30%; top:-30%; animation-duration: 7.4s; border-color: rgba(168,33,48,0.45); }
+.e-orbit.o3 i{ background: var(--maroon-bright); box-shadow:0 0 10px var(--maroon-bright); }
+@keyframes spin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+
+.loader-text-1{
+  font-size: clamp(1.2rem, 4vw, 1.9rem); color: var(--gold-soft);
+  text-shadow: 0 0 18px rgba(217,179,77,0.7);
+  opacity:0; animation: fadeInUp 0.8s var(--ease) 0.3s forwards;
+}
+.loader-text-2{
+  margin-top:10px; font-size: clamp(1.6rem, 6vw, 2.6rem); letter-spacing:0.05em;
+  background: linear-gradient(90deg, var(--gold-soft), var(--white), var(--cyan-glow));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  opacity:0; animation: fadeInUp 0.8s var(--ease) 1.2s forwards;
+}
+.loader-sub{
+  margin-top: 14px; font-family: var(--font-mono); color: var(--dim); letter-spacing:0.15em;
+  font-size: clamp(0.8rem, 2.4vw, 1rem); text-transform: uppercase;
+  opacity:0; animation: fadeInUp 0.8s var(--ease) 1.9s forwards;
+}
+@keyframes fadeInUp{
+  from{ opacity:0; transform: translateY(14px); } to{ opacity:1; transform: translateY(0); }
+}
+
+.loader-bar{
+  margin-top: 26px; width: min(260px, 60vw); height:4px; border-radius:4px; background: rgba(255,255,255,0.12); overflow:hidden;
+}
+.loader-bar span{
+  display:block; height:100%; width:0%; background: linear-gradient(90deg, var(--cyan-glow), var(--gold));
+  animation: loadFill 2.8s var(--ease) forwards;
+}
+@keyframes loadFill{ to{ width:100%; } }
+
+/* --------------------------- Sound Toggle -------------------------------- */
+#sound-toggle{
+  position: fixed; top: 16px; right: 16px; z-index: 60;
+  background: var(--panel); border:1px solid var(--panel-border); backdrop-filter: blur(10px);
+  color: var(--white); padding: 10px 14px; border-radius: 999px; font-size:0.85rem;
+  display:flex; align-items:center; gap:8px;
+}
+#sound-toggle:hover{ border-color: var(--cyan-glow); }
+
+/* --------------------------- Mission Clock -------------------------------- */
+#mission-clock{
+  position: fixed; top: 16px; left: 16px; z-index: 60;
+  background: var(--panel); border:1px solid var(--panel-border); backdrop-filter: blur(10px);
+  color: var(--white); padding: 9px 16px; border-radius: 999px;
+  display:flex; align-items:center; gap:10px; font-family: var(--font-mono);
+}
+#mission-clock .dot{
+  width:7px; height:7px; border-radius:50%; background: var(--cyan-glow);
+  box-shadow: 0 0 8px var(--cyan-glow); animation: dotPulse 1.6s ease-in-out infinite;
+  flex-shrink:0;
+}
+@keyframes dotPulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.3; } }
+#mission-clock .clock-text{ display:flex; flex-direction:column; line-height:1.25; }
+#clock-time{ font-size:0.95rem; font-weight:700; color: var(--gold-soft); letter-spacing:0.03em; }
+#clock-date{ font-size:0.7rem; color: var(--dim); letter-spacing:0.06em; text-transform:uppercase; }
+@media (max-width: 560px){
+  #mission-clock{ padding:7px 12px; }
+  #clock-date{ display:none; }
+}
+
+/* --------------------------- Layout Shell -------------------------------- */
+main{ position:relative; z-index: 5; }
+.wrap{ max-width: 1180px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
+
+section{ padding: 70px 0; position:relative; }
+
+.eyebrow{
+  font-family: var(--font-mono); text-transform:uppercase; letter-spacing: 0.24em;
+  color: var(--cyan-glow); font-size: 0.78rem; margin-bottom: 14px; display:block;
+}
+
+/* --------------------------- Hero ---------------------------------------- */
+.hero{
+  min-height: 100vh; display:flex; align-items:center; padding-top: 60px;
+}
+.hero-grid{
+  display:grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items:center; width:100%;
+}
+@media (max-width: 900px){ .hero-grid{ grid-template-columns: 1fr; } }
+
+.hero h1{
+  font-size: clamp(2.1rem, 5.4vw, 3.6rem); line-height:1.08;
+  background: linear-gradient(100deg, var(--white) 20%, var(--gold-soft) 60%, var(--cyan-glow) 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow: 0 0 30px rgba(217,179,77,0.15);
+}
+.hero p.lead{
+  margin-top: 22px; font-size: clamp(1rem, 1.6vw, 1.12rem); color: var(--dim); line-height:1.7; max-width: 56ch;
+}
+.badge-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top: 26px; }
+.badge{
+  font-family: var(--font-mono); font-size: 0.78rem; padding: 7px 12px; border-radius: 999px;
+  border:1px solid var(--panel-border); color: var(--gold-soft); background: rgba(217,179,77,0.06);
+}
+
+/* Lab illustration (signature orbital rig, larger, decorative) */
+.lab-illustration{
+  position:relative; height: min(420px, 60vw); display:flex; align-items:center; justify-content:center;
+}
+.lab-core{
+  position:relative; width: 62%; aspect-ratio:1/1;
+}
+.lab-core .nucleus{
+  position:absolute; inset:0; margin:auto; width:30%; height:30%; border-radius:50%;
+  background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--maroon-bright) 75%);
+  box-shadow: 0 0 50px rgba(217,179,77,0.55);
+  animation: crestPulse 3s ease-in-out infinite;
+}
+.lab-core .ring{
+  position:absolute; inset:0; border:1.5px solid rgba(79,224,232,0.35); border-radius:50%;
+  animation: spin linear infinite;
+}
+.lab-core .ring i{
+  position:absolute; top:-6px; left:50%; width:12px; height:12px; margin-left:-6px; border-radius:50%;
+  background: var(--cyan-glow); box-shadow: 0 0 12px var(--cyan-glow), 0 0 24px var(--cyan-glow);
+}
+.lab-core .ring.r1{ animation-duration:6s; }
+.lab-core .ring.r2{ transform: rotateX(60deg); animation-duration:4.4s; animation-direction:reverse; }
+.lab-core .ring.r2 i{ background:var(--gold); box-shadow:0 0 12px var(--gold); }
+.lab-core .ring.r3{ transform: rotateY(60deg); animation-duration:8s; }
+.lab-core .ring.r3 i{ background:var(--maroon-bright); box-shadow:0 0 12px var(--maroon-bright); }
+
+.dna{
+  position:absolute; right: -4%; top: 6%; width: 46px; height: 82%; opacity:0.9;
+}
+.dna svg{ width:100%; height:100%; animation: dnaRotate 6s linear infinite; transform-origin:center; }
+@keyframes dnaRotate{ from{ transform: rotateY(0deg); } to{ transform: rotateY(360deg); } }
+
+.planet{
+  position:absolute; border-radius:50%; opacity:0.85;
+  animation: floatSlow 6s ease-in-out infinite;
+}
+.planet.p1{ width:26px; height:26px; left: 4%; top: 10%; background: radial-gradient(circle at 35% 30%, #8fd8ff, #1c4d7a); box-shadow:0 0 16px rgba(79,224,232,0.6); }
+.planet.p2{ width:16px; height:16px; left: -2%; bottom: 14%; background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--maroon)); box-shadow:0 0 14px rgba(217,179,77,0.6); animation-delay:1.2s; }
+@keyframes floatSlow{ 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-14px);} }
+
+.flask{
+  position:absolute; bottom: 2%; right: 10%; width: 46px; height: 60px; opacity:0.9;
+}
+.flask svg{ width:100%; height:100%; }
+.bubble{ animation: bubbleUp 2.6s ease-in infinite; }
+@keyframes bubbleUp{
+  0%{ transform: translateY(0); opacity:0.9; }
+  100%{ transform: translateY(-26px); opacity:0; }
+}
+
+/* --------------------------- Glass Card base ------------------------------ */
+.glass{
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+}
+
+/* --------------------------- Quote Card ----------------------------------- */
+.quote-card{
+  padding: 30px clamp(20px,4vw,42px); text-align:center; max-width: 780px; margin: 0 auto;
+  position:relative; overflow:hidden;
+}
+.quote-card::before{
+  content:"“"; position:absolute; top:-10px; left: 18px; font-size:5rem; color: rgba(217,179,77,0.18); font-family: Georgia, serif;
+}
+#quote-text{
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem); font-style: italic; color: var(--white);
+  transition: opacity 0.6s ease;
+}
+#quote-text.fade{ opacity:0; }
+
+/* --------------------------- Reminder Panel -------------------------------- */
+.reminder{
+  padding: clamp(24px,4vw,44px); position:relative; overflow:hidden;
+  border: 1px solid rgba(217,179,77,0.55);
+}
+.reminder::after{
+  content:""; position:absolute; inset:-2px; border-radius: inherit; z-index:-1;
+  background: linear-gradient(120deg, rgba(217,179,77,0.35), rgba(79,224,232,0.2), rgba(217,179,77,0.35));
+  filter: blur(18px); animation: glowShift 5s ease-in-out infinite;
+}
+@keyframes glowShift{ 0%,100%{ opacity:0.5; } 50%{ opacity:0.9; } }
+.reminder h2{
+  font-size: clamp(1.3rem, 3vw, 1.8rem); color: var(--gold-soft); margin-bottom: 16px;
+  text-shadow: 0 0 18px rgba(217,179,77,0.4);
+}
+.reminder p.intro{ color: var(--dim); margin-bottom: 18px; line-height:1.6; }
+.checklist{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px; }
+.checklist li{
+  display:flex; align-items:center; gap:10px; font-size:1.02rem;
+  opacity:0; transform: translateX(-16px);
+  animation: slideIn 0.6s var(--ease) forwards;
+}
+.checklist li:nth-child(1){ animation-delay: 0.15s; }
+.checklist li:nth-child(2){ animation-delay: 0.45s; }
+.checklist li:nth-child(3){ animation-delay: 0.75s; }
+@keyframes slideIn{ to{ opacity:1; transform: translateX(0); } }
+.check-icon{ color: var(--cyan-glow); font-weight:900; }
+
+/* --------------------------- Dashboard Buttons ----------------------------- */
+.dash-buttons{ display:grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 40px; }
+@media (max-width: 700px){ .dash-buttons{ grid-template-columns: 1fr; } }
+
+.dash-btn{
+  position:relative; display:flex; flex-direction:column; gap:6px; align-items:flex-start;
+  padding: 26px 28px; border-radius: var(--radius-md); overflow:hidden;
+  border: 1px solid var(--panel-border); background: var(--panel);
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease), border-color 0.35s var(--ease);
+}
+.dash-btn .icon{ font-size:1.9rem; }
+.dash-btn .label{ font-size:1.15rem; font-weight:700; }
+.dash-btn .sub{ font-size:0.85rem; color: var(--dim); }
+.dash-btn .ripple{
+  position:absolute; border-radius:50%; background: rgba(255,255,255,0.35);
+  transform: scale(0); animation: rippleAnim 0.6s ease-out forwards; pointer-events:none;
+}
+@keyframes rippleAnim{ to{ transform: scale(16); opacity:0; } }
+
+.dash-btn.quipper:hover{
+  transform: scale(1.03); border-color: var(--gold);
+  box-shadow: 0 0 40px rgba(217,179,77,0.45);
+}
+.dash-btn.hangouts{
+  animation: floatBtn 3.6s ease-in-out infinite;
+}
+.dash-btn.hangouts:hover{
+  border-color: var(--cyan-glow); box-shadow: 0 0 40px rgba(79,224,232,0.45);
+}
+@keyframes floatBtn{ 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-6px);} }
+
+/* --------------------------- Fact Card ------------------------------------- */
+.fact-card{
+  padding: 28px clamp(18px,3vw,36px); display:flex; align-items:center; gap:18px; max-width: 780px; margin: 0 auto;
+  min-height: 96px;
+}
+.fact-icon{ font-size:2.2rem; flex-shrink:0; }
+#fact-text{ font-size: clamp(0.98rem, 2vw, 1.12rem); transition: transform 0.5s var(--ease), opacity 0.5s var(--ease); }
+#fact-text.slide-out{ transform: translateX(-24px); opacity:0; }
+
+/* --------------------------- Lab Panel Grid -------------------------------- */
+.lab-grid{
+  display:grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 34px;
+}
+@media (max-width: 900px){ .lab-grid{ grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px){ .lab-grid{ grid-template-columns: 1fr; } }
+
+.lab-card{
+  padding: 26px 20px; text-align:center; cursor:pointer;
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease), border-color 0.35s var(--ease);
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+}
+.lab-card .lab-icon{ font-size: 2.3rem; }
+.lab-card h3{ font-size:1.05rem; color: var(--gold-soft); }
+.lab-card .desc{
+  font-size: 0.86rem; color: var(--dim); max-height:0; overflow:hidden; opacity:0;
+  transition: max-height 0.4s var(--ease), opacity 0.4s var(--ease), margin 0.4s var(--ease);
+}
+.lab-card:hover, .lab-card:focus-within{
+  transform: translateY(-6px); border-color: var(--cyan-glow);
+  box-shadow: 0 12px 34px rgba(79,224,232,0.25);
+}
+.lab-card:hover .desc, .lab-card:focus-within .desc{ max-height: 80px; opacity:1; margin-top:4px; }
+
+/* --------------------------- Footer ---------------------------------------- */
+footer{
+  padding: 50px 0 40px; text-align:center; border-top: 1px solid var(--panel-border);
+  color: var(--dim); font-size:0.92rem; line-height:1.8;
+}
+footer strong{ color: var(--gold-soft); }
+footer .tagline{ margin-top:10px; font-style:italic; color: var(--dim); }
+
+/* --------------------------- Utility --------------------------------------- */
+.center-text{ text-align:center; }
+.section-title{
+  font-size: clamp(1.4rem, 3.4vw, 2rem); text-align:center; margin-bottom: 8px;
+}
+.section-sub{ text-align:center; color: var(--dim); margin-bottom: 30px; }
+</style>
+</head>
+<body>
+
+<a href="#dashboard" class="skip-link">Skip to dashboard</a>
+
+<!-- Background layers -->
+<div id="bg-canvas" aria-hidden="true"></div>
+<div class="grid-overlay" aria-hidden="true"></div>
+<div class="equation-field" id="equation-field" aria-hidden="true"></div>
+<div id="stars" aria-hidden="true"></div>
+<div class="wave" aria-hidden="true"></div>
+<div class="float-layer" id="float-layer" aria-hidden="true"></div>
+
+<!-- Loading sequence -->
+<div id="loader" role="status" aria-live="polite">
+  <div class="orbit-rig">
+    <div class="e-orbit o3"><i></i></div>
+    <div class="e-orbit o2"><i></i></div>
+    <div class="e-orbit o1"><i></i></div>
+    <div class="crest">🔬</div>
+  </div>
+  <div class="loader-text-1">Welcome, Grade 9 Badjao!</div>
+  <div class="loader-text-2">Science EGrade Portal</div>
+  <div class="loader-sub">Observe · Explore · Discover · Innovate</div>
+  <div class="loader-bar"><span></span></div>
+</div>
+
+<!-- Sound toggle -->
+<button id="sound-toggle" aria-pressed="false" aria-label="Toggle sound effects">
+  <span id="sound-icon">🔈</span><span id="sound-label">Sound off</span>
+</button>
+
+<!-- Mission clock: live date and time -->
+<div id="mission-clock" role="status" aria-live="off">
+  <span class="dot" aria-hidden="true"></span>
+  <span class="clock-text">
+    <span id="clock-time">--:--:-- --</span>
+    <span id="clock-date">Loading date…</span>
+  </span>
+</div>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero" id="dashboard">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow">Science 9 · Cavite School of St. Mark</span>
+        <h1>🚀 Welcome, Future Scientists!</h1>
+        <p class="lead">Welcome to your Science EGrade Portal! This school year, we will explore the amazing world of Biology, Chemistry, Physics, and Earth Science through exciting lessons, hands-on activities, investigations, and scientific discoveries. Every question leads to a new discovery, and every experiment brings us closer to understanding our world. Let's explore science together!</p>
+        <div class="badge-row">
+          <span class="badge">⚛ Biology</span>
+          <span class="badge">⚗ Chemistry</span>
+          <span class="badge">⚡ Physics</span>
+          <span class="badge">🌍 Earth Science</span>
+        </div>
+      </div>
+
+      <div class="lab-illustration" aria-hidden="true">
+        <div class="lab-core">
+          <div class="ring r3"><i></i></div>
+          <div class="ring r2"><i></i></div>
+          <div class="ring r1"><i></i></div>
+          <div class="nucleus"></div>
+        </div>
+        <div class="planet p1"></div>
+        <div class="planet p2"></div>
+        <div class="dna">
+          <svg viewBox="0 0 40 200" preserveAspectRatio="none">
+            <g stroke="#4fe0e8" stroke-width="2" fill="none" opacity="0.8">
+              <path d="M2,0 C 38,20 2,40 38,60 C 2,80 38,100 2,120 C38,140 2,160 38,180 C2,196 38,200 38,200"/>
+              <path d="M38,0 C 2,20 38,40 2,60 C 38,80 2,100 38,120 C2,140 38,160 2,180 C38,196 2,200 2,200" stroke="#d9b34d"/>
+            </g>
+          </svg>
+        </div>
+        <div class="flask">
+          <svg viewBox="0 0 46 60">
+            <path d="M16,4 H30 V20 L42,52 Q44,58 36,58 H10 Q2,58 4,52 L16,20 Z" fill="rgba(79,224,232,0.12)" stroke="#4fe0e8" stroke-width="2"/>
+            <circle class="bubble" cx="20" cy="50" r="2.4" fill="#4fe0e8"/>
+            <circle class="bubble" cx="26" cy="52" r="1.8" fill="#d9b34d" style="animation-delay:0.6s"/>
+            <circle class="bubble" cx="23" cy="46" r="1.6" fill="#f4f2ec" style="animation-delay:1.2s"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DAILY QUOTE -->
+  <section>
+    <div class="wrap">
+      <span class="eyebrow center-text" style="display:block;text-align:center;">Daily Science Quote</span>
+      <div class="glass quote-card">
+        <p id="quote-text">"Science is a way of thinking much more than it is a body of knowledge."</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- IMPORTANT REMINDER -->
+  <section>
+    <div class="wrap">
+      <div class="glass reminder">
+        <h2>📢 IMPORTANT REMINDER</h2>
+        <p class="intro">To access all your Science lessons, activities, quizzes, laboratory tasks, and announcements:</p>
+        <ul class="checklist">
+          <li><span class="check-icon">✅</span> Log in to your Quipper Account</li>
+          <li><span class="check-icon">✅</span> Open your Google Hangouts</li>
+          <li><span class="check-icon">✅</span> Check both regularly for assignments, updates, and classroom announcements.</li>
+        </ul>
+
+        <div class="dash-buttons">
+          <a href="#" class="dash-btn glass quipper" data-sound="click">
+            <span class="icon">📚</span>
+            <span class="label">Access Quipper</span>
+            <span class="sub">Lessons, quizzes &amp; lab tasks</span>
+          </a>
+          <a href="#" class="dash-btn glass hangouts" data-sound="click">
+            <span class="icon">💬</span>
+            <span class="label">Open Google Hangouts</span>
+            <span class="sub">Class chat &amp; announcements</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TODAY'S SCIENCE FACT -->
+  <section>
+    <div class="wrap">
+      <span class="eyebrow center-text" style="display:block;text-align:center;">Today's Science Fact</span>
+      <div class="glass fact-card">
+        <span class="fact-icon">🧠</span>
+        <p id="fact-text">Your brain contains approximately 86 billion neurons.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- LABORATORY PANEL -->
+  <section>
+    <div class="wrap">
+      <h2 class="section-title">🧪 Interactive Laboratory Panel</h2>
+      <p class="section-sub">Hover or tap a discipline to learn what awaits inside.</p>
+      <div class="lab-grid">
+        <div class="glass lab-card" tabindex="0" data-sound="hover">
+          <span class="lab-icon">🧬</span>
+          <h3>Biology</h3>
+          <p class="desc">Discover how living organisms work.</p>
+        </div>
+        <div class="glass lab-card" tabindex="0" data-sound="hover">
+          <span class="lab-icon">⚗</span>
+          <h3>Chemistry</h3>
+          <p class="desc">Explore reactions that shape our world.</p>
+        </div>
+        <div class="glass lab-card" tabindex="0" data-sound="hover">
+          <span class="lab-icon">⚡</span>
+          <h3>Physics</h3>
+          <p class="desc">Understand the laws that govern the universe.</p>
+        </div>
+        <div class="glass lab-card" tabindex="0" data-sound="hover">
+          <span class="lab-icon">🌍</span>
+          <h3>Earth Science</h3>
+          <p class="desc">Study the amazing planet we call home.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <p><strong>Cavite School of St. Mark</strong></p>
+      <p>Grade 9 Badjao — Science EGrade Portal</p>
+      <p class="tagline">"Science is not just about answers—it begins with curiosity."</p>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+/* ==========================================================================
+   SCIENCE EGRADE PORTAL — JavaScript
+   Sections: (1) Sound engine  (2) Loader  (3) Background generation
+   (4) Quotes  (5) Facts rotation  (6) Interaction effects
+   ========================================================================== */
+
+/* ---------------------------- 1. Sound Engine ---------------------------- */
+// All sounds are synthesized with the Web Audio API — no external audio files.
+const SoundEngine = (() => {
+  let ctx = null;
+  let enabled = false;
+
+  function getCtx(){
+    if(!ctx){ ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    return ctx;
+  }
+
+  function tone({freq=440, duration=0.18, type='sine', gain=0.06, glideTo=null, delay=0}){
+    if(!enabled) return;
+    const c = getCtx();
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, c.currentTime + delay);
+    if(glideTo){
+      osc.frequency.exponentialRampToValueAtTime(glideTo, c.currentTime + delay + duration);
+    }
+    g.gain.setValueAtTime(gain, c.currentTime + delay);
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + delay + duration);
+    osc.connect(g).connect(c.destination);
+    osc.start(c.currentTime + delay);
+    osc.stop(c.currentTime + delay + duration + 0.05);
+  }
+
+  return {
+    enable(){ enabled = true; getCtx(); },
+    disable(){ enabled = false; },
+    isEnabled(){ return enabled; },
+    startup(){
+      tone({freq:220, glideTo:660, duration:0.5, type:'sine', gain:0.05});
+      tone({freq:440, glideTo:880, duration:0.5, type:'triangle', gain:0.03, delay:0.12});
+    },
+    click(){
+      tone({freq:900, glideTo:500, duration:0.1, type:'square', gain:0.04});
+    },
+    hover(){
+      tone({freq:660, duration:0.12, type:'sine', gain:0.03});
+    }
+  };
+})();
+
+const soundToggle = document.getElementById('sound-toggle');
+const soundIcon = document.getElementById('sound-icon');
+const soundLabel = document.getElementById('sound-label');
+
+soundToggle.addEventListener('click', () => {
+  if(SoundEngine.isEnabled()){
+    SoundEngine.disable();
+    soundIcon.textContent = '🔈';
+    soundLabel.textContent = 'Sound off';
+    soundToggle.setAttribute('aria-pressed','false');
+  } else {
+    SoundEngine.enable();
+    SoundEngine.startup();
+    soundIcon.textContent = '🔊';
+    soundLabel.textContent = 'Sound on';
+    soundToggle.setAttribute('aria-pressed','true');
+  }
+});
+
+document.querySelectorAll('[data-sound="click"]').forEach(el=>{
+  el.addEventListener('click', (e)=>{
+    SoundEngine.click();
+    // ripple effect
+    const rect = el.getBoundingClientRect();
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size+'px';
+    ripple.style.left = (e.clientX - rect.left - size/2)+'px';
+    ripple.style.top = (e.clientY - rect.top - size/2)+'px';
+    el.appendChild(ripple);
+    setTimeout(()=>ripple.remove(), 650);
+  });
+});
+document.querySelectorAll('[data-sound="hover"], .dash-btn').forEach(el=>{
+  el.addEventListener('mouseenter', ()=> SoundEngine.hover());
+});
+
+/* ------------------------------ 2. Mission Clock --------------------------- */
+// Updates a live date/time readout every second, based on the visitor's device clock.
+(function missionClock(){
+  const timeEl = document.getElementById('clock-time');
+  const dateEl = document.getElementById('clock-date');
+
+  function pad(n){ return n.toString().padStart(2,'0'); }
+
+  function update(){
+    const now = new Date();
+    let hours = now.getHours();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    if(hours === 0) hours = 12;
+    timeEl.textContent = `${pad(hours)}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${ampm}`;
+
+    const weekday = now.toLocaleDateString(undefined, { weekday: 'short' });
+    const month = now.toLocaleDateString(undefined, { month: 'short' });
+    dateEl.textContent = `${weekday}, ${month} ${now.getDate()}, ${now.getFullYear()}`;
+  }
+
+  update();
+  setInterval(update, 1000);
+})();
+
+/* ------------------------------ 3. Loader --------------------------------- */
+window.addEventListener('load', () => {
+  const loader = document.getElementById('loader');
+  setTimeout(() => {
+    loader.classList.add('hide');
+  }, 3000);
+});
+
+/* -------------------------- 3. Background Generation ----------------------- */
+// Stars
+(function makeStars(){
+  const container = document.getElementById('stars');
+  const count = window.innerWidth < 600 ? 60 : 130;
+  let html = '';
+  for(let i=0;i<count;i++){
+    const size = (Math.random()*2 + 1).toFixed(1);
+    const top = (Math.random()*100).toFixed(2);
+    const left = (Math.random()*100).toFixed(2);
+    const dur = (Math.random()*3 + 2).toFixed(2);
+    const delay = (Math.random()*4).toFixed(2);
+    html += `<div class="star" style="width:${size}px;height:${size}px;top:${top}%;left:${left}%;animation-duration:${dur}s;animation-delay:${delay}s;"></div>`;
+  }
+  container.innerHTML = html;
+})();
+
+// Floating equations
+(function makeEquations(){
+  const eqs = ['E = mc²','H₂O','F = ma','v = fλ','pH = -log[H⁺]','a² + b² = c²','PV = nRT','C₆H₁₂O₆','Δx·Δp ≥ ħ/2','λ = h/p'];
+  const container = document.getElementById('equation-field');
+  let html = '';
+  for(let i=0;i<14;i++){
+    const eq = eqs[Math.floor(Math.random()*eqs.length)];
+    const top = (Math.random()*100).toFixed(1);
+    const left = (Math.random()*90).toFixed(1);
+    const dur = (Math.random()*20 + 20).toFixed(1);
+    const delay = (Math.random()*10).toFixed(1);
+    html += `<span style="top:${top}%; left:${left}%; animation-duration:${dur}s; animation-delay:${delay}s;">${eq}</span>`;
+  }
+  container.innerHTML = html;
+})();
+
+// Floating science emoji particles
+(function makeFloaters(){
+  const icons = ['⚛','🧬','🧪','🔬','🌎','⭐','☄','⚡','💡','📐'];
+  const container = document.getElementById('float-layer');
+  const count = window.innerWidth < 600 ? 10 : 20;
+  let html = '';
+  for(let i=0;i<count;i++){
+    const icon = icons[Math.floor(Math.random()*icons.length)];
+    const left = (Math.random()*96).toFixed(1);
+    const dur = (Math.random()*14 + 14).toFixed(1);
+    const delay = (Math.random()*18).toFixed(1);
+    const size = (Math.random()*0.9 + 1.1).toFixed(2);
+    html += `<span class="floater" style="left:${left}%; animation-duration:${dur}s; animation-delay:${delay}s; font-size:${size}rem;">${icon}</span>`;
+  }
+  container.innerHTML = html;
+})();
+
+/* ------------------------------- 4. Quotes -------------------------------- */
+const quotes = [
+  "Science is a way of thinking much more than it is a body of knowledge.",
+  "The important thing is never to stop questioning.",
+  "Curiosity is the engine of discovery.",
+  "Every great scientist started by asking \u2018Why?\u2019"
+];
+const quoteEl = document.getElementById('quote-text');
+quoteEl.textContent = quotes[Math.floor(Math.random()*quotes.length)];
+
+/* ---------------------------- 5. Facts rotation ---------------------------- */
+const facts = [
+  {icon:'🧠', text:"Your brain contains approximately 86 billion neurons."},
+  {icon:'⚛', text:"Everything around you is made of atoms."},
+  {icon:'🌍', text:"Earth's atmosphere protects us from harmful radiation."},
+  {icon:'🧬', text:"Every human shares about 99.9% of the same DNA."},
+  {icon:'☀', text:"Light from the Sun takes about 8 minutes to reach Earth."},
+  {icon:'🌋', text:"The Earth's core is nearly as hot as the surface of the Sun."}
+];
+let factIndex = 0;
+const factTextEl = document.getElementById('fact-text');
+const factIconEl = document.querySelector('.fact-icon');
+
+function rotateFact(){
+  factTextEl.classList.add('slide-out');
+  setTimeout(() => {
+    factIndex = (factIndex + 1) % facts.length;
+    factTextEl.textContent = facts[factIndex].text;
+    factIconEl.textContent = facts[factIndex].icon;
+    factTextEl.classList.remove('slide-out');
+  }, 400);
+}
+setInterval(rotateFact, 6000);
+
+/* ---------------------------- 6. Misc interactions -------------------------- */
+// Card hover notification tone already bound above via data-sound + .dash-btn listeners.
+document.querySelectorAll('.lab-card').forEach(card => {
+  card.addEventListener('mouseenter', () => SoundEngine.hover());
+  card.addEventListener('focus', () => SoundEngine.hover());
+});
+</script>
+</body>
+</html>
